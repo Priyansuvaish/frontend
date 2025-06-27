@@ -1,7 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { signOut, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { getStoredToken, clearStoredToken, getAuthHeaders, handleSignOut } from "../utils/auth";
 
 export default function UserPage() {
+    const { data: session } = useSession();
+    const router = useRouter();
     const [firstname, setFirstname] = useState("");
     const [age, setAge] = useState("");
     const [submitted, setSubmitted] = useState(false);
@@ -12,6 +17,12 @@ export default function UserPage() {
     const [tasksLoading, setTasksLoading] = useState(false);
     const [tasksError, setTasksError] = useState("");
 
+    useEffect(() => {
+        if (!session) {
+            router.replace("/");
+        }
+    }, [session, router]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
@@ -19,13 +30,9 @@ export default function UserPage() {
         setSubmitted(false);
         setLoading(true);
         try {
-            const token = localStorage.getItem("access_token");
             const res = await fetch("/api/apply", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`,
-                },
+                headers: getAuthHeaders(session?.accessToken),
                 body: JSON.stringify({ firstName: firstname, age: Number(age) }),
             });
             const data = await res.json();
@@ -46,12 +53,10 @@ export default function UserPage() {
         setTasksError("");
         setTasks([]);
         setTasksLoading(true);
+        
         try {
-            const token = localStorage.getItem("access_token");
             const res = await fetch("http://localhost:8082/api/user/tasks", {
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                },
+                headers: getAuthHeaders(session?.accessToken),
             });
             if (!res.ok) {
                 const data = await res.json();
@@ -66,12 +71,25 @@ export default function UserPage() {
         }
     };
 
+    const onSignOut = () => {
+        handleSignOut(signOut);
+    };
+
+    if (!session) return null;
+
     return (
         <div className="flex items-center justify-center min-h-screen bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
             <div className="w-full max-w-md backdrop-blur-lg bg-white/90 dark:bg-gray-800/80 p-8 rounded-2xl shadow-2xl transition-all">
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">🚀 User Form</h1>
+                    <button 
+                        onClick={onSignOut}
+                        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                    >
+                        Sign out
+                    </button>
+                </div>
                 <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                    <h1 className="text-3xl font-bold text-center text-gray-900 dark:text-white">🚀 User Form</h1>
-
                     {error && <div className="text-red-500 text-sm text-center animate-pulse">{error}</div>}
                     {success && <div className="text-green-600 text-sm text-center animate-pulse">{success}</div>}
 

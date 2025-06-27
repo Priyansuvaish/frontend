@@ -1,13 +1,23 @@
 "use client";
 import { useState, useEffect } from "react";
+import { signOut, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { getStoredToken, clearStoredToken, getAuthHeaders, handleSignOut } from "../utils/auth";
 
 export default function HRPage() {
+    const { data: session } = useSession();
+    const router = useRouter();
     const [view, setView] = useState<"assigned" | "unassigned">("assigned");
     const [assignedData, setassignedData] = useState<any[]>([]);
     const [unassignedData, setUnassignedData] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
-    const token = localStorage.getItem("access_token");
+    useEffect(() => {
+        if (!session) {
+            router.replace("/");
+        }
+    }, [session, router]);
+
     useEffect(() => {
         fetchData();
     }, [view]);
@@ -17,9 +27,7 @@ export default function HRPage() {
             setIsLoading(true);
             fetch("http://localhost:8082/api/workflow-instances/tasks", {
                 method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: getAuthHeaders(session?.accessToken),
             })
                 .then((res) => {
                     if (!res.ok) throw new Error("Failed to fetch");
@@ -43,9 +51,7 @@ export default function HRPage() {
             setIsLoading(true);
             fetch("http://localhost:8082/api/workflow-instances/assignedtasks", {
                 method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: getAuthHeaders(session?.accessToken),
             })
                 .then((res) => {
                     if (!res.ok) throw new Error("Failed to fetch");
@@ -75,10 +81,7 @@ export default function HRPage() {
         setIsLoading(true);
         fetch(`http://localhost:8082/api/workflow-instances/approve/${id}`, {
             method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-            },
+            headers: getAuthHeaders(session?.accessToken),
             body: JSON.stringify({
                 HR:true
             }),
@@ -114,9 +117,7 @@ export default function HRPage() {
         setIsLoading(true);
         fetch(`http://localhost:8082/api/workflow-instances/assign/${id}`, {
             method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
+            headers: getAuthHeaders(session?.accessToken),
         })
             .then(async (res) => {
                 const contentType = res.headers.get("content-type");
@@ -142,12 +143,26 @@ export default function HRPage() {
             .finally(() => setIsLoading(false));
     };
 
+    const onSignOut = () => {
+        handleSignOut(signOut);
+    };
+
+    if (!session) return null;
+
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
             <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md w-full max-w-2xl">
-                <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4 text-center">
-                    HR Page
-                </h1>
+                <div className="flex justify-between items-center mb-4">
+                    <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+                        HR Page
+                    </h1>
+                    <button 
+                        onClick={onSignOut}
+                        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                    >
+                        Sign out
+                    </button>
+                </div>
                 <div className="flex justify-center mb-4 space-x-4">
                     <button
                         className={`px-4 py-2 rounded ${view === "assigned"
