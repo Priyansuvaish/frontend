@@ -3,14 +3,22 @@ import { useSession, signIn } from "next-auth/react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {jwtDecode} from "jwt-decode";
+import { Session } from "next-auth";
+
+interface DecodedToken {
+  realm_access?: {
+    roles?: string[];
+  };
+}
 
 export default function HomePage() {
   const { data: session } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (session?.accessToken) {
-      const decoded: any = jwtDecode(session.accessToken);
+    if ((session as Session)?.accessToken) {
+      const accessToken = (session as Session).accessToken;
+      const decoded: DecodedToken = jwtDecode(accessToken!);
       const roles: string[] = decoded?.realm_access?.roles || [];
       if (roles.includes("User")) {
         router.replace("/User");
@@ -20,6 +28,9 @@ export default function HomePage() {
         router.replace("/Manager");
       } else if (roles.includes("HR")) {
         router.replace("/HR");
+      }
+      else if (roles.includes("Head")) {
+        router.replace("/Head");
       }
     } else if (session === null) {
       // If not signed in, automatically trigger signIn

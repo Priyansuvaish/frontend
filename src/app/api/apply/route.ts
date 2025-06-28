@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
 
   try {
-    const response = await fetch('http://localhost:8082/api/form-submissions?templateId=2', {
+    const response = await fetch(`${process.env.BACKEND_URL}/api/form-submissions?templateId=2`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

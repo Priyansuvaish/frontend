@@ -1,16 +1,23 @@
 "use client";
-import { useState, useEffect } from "react";
-import { signOut, useSession } from "next-auth/react";
+import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { getStoredToken, clearStoredToken, getAuthHeaders, handleSignOut } from "../utils/auth";
+import { getAuthHeaders, handleSignOut } from "../utils/auth";
+import { Session } from "next-auth";
+
+interface TaskItem {
+    id: string | number;
+    name: string;
+    status?: string;
+    processInstanceId?: string | number;
+}
 
 export default function HRPage() {
     const { data: session } = useSession();
     const router = useRouter();
     const [view, setView] = useState<"assigned" | "unassigned">("assigned");
-    const [assignedData, setassignedData] = useState<any[]>([]);
-    const [unassignedData, setUnassignedData] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [assignedData, setassignedData] = useState<TaskItem[]>([]);
+    const [unassignedData, setUnassignedData] = useState<TaskItem[]>([]);
 
     useEffect(() => {
         if (!session) {
@@ -18,16 +25,11 @@ export default function HRPage() {
         }
     }, [session, router]);
 
-    useEffect(() => {
-        fetchData();
-    }, [view]);
-
-    const fetchData = () => {
+    const fetchData = useCallback(() => {
         if (view === "unassigned") {
-            setIsLoading(true);
-            fetch("http://localhost:8082/api/workflow-instances/tasks", {
+            fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/workflow-instances/tasks`, {
                 method: "GET",
-                headers: getAuthHeaders(session?.accessToken),
+                headers: getAuthHeaders((session as Session)?.accessToken),
             })
                 .then((res) => {
                     if (!res.ok) throw new Error("Failed to fetch");
@@ -35,8 +37,9 @@ export default function HRPage() {
                 })
                 .then((data) => {
                     // Format the response as needed. Here assuming data is an array.
-                    const formatted = data.map((item: any) => ({
-                        id: item.processInstanceId || "N/A",
+                    const formatted = data.map((item: TaskItem) => ({
+                        id: item.id || "N/A",
+                        processInstanceId: item.processInstanceId || "N/A",
                         name: item.name || "Unnamed Task",
                         status: "Unassigned",
                     }));
@@ -44,14 +47,12 @@ export default function HRPage() {
                 })
                 .catch((err) => {
                     console.error("Error fetching unassigned tasks:", err);
-                })
-                .finally(() => setIsLoading(false));
+                });
         }
         else if (view === "assigned") {
-            setIsLoading(true);
-            fetch("http://localhost:8082/api/workflow-instances/assignedtasks", {
+            fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/workflow-instances/assignedtasks`, {
                 method: "GET",
-                headers: getAuthHeaders(session?.accessToken),
+                headers: getAuthHeaders((session as Session)?.accessToken),
             })
                 .then((res) => {
                     if (!res.ok) throw new Error("Failed to fetch");
@@ -59,27 +60,29 @@ export default function HRPage() {
                 })
                 .then((data) => {
                     // Format the response as needed. Here assuming data is an array.
-                    const formatted = data.map((item: any) => ({
-                        id: item.processInstanceId || "N/A",
+                    const formatted = data.map((item: TaskItem) => ({
+                        id: item.id || "N/A",
+                        processInstanceId: item.processInstanceId || "N/A",
                         name: item.name || "Unnamed Task",
                     }));
                     setassignedData(formatted);
                 })
                 .catch((err) => {
                     console.error("Error fetching unassigned tasks:", err);
-                })
-                .finally(() => setIsLoading(false));
+                });
         }
-    }
+    }, [view, session]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     const dataToDisplay = view === "assigned" ? assignedData : unassignedData;
 
-    const handleApprove = (id: number) => {
-
-        setIsLoading(true);
-        fetch(`http://localhost:8082/api/workflow-instances/approve/${id}`, {
+    const handleApprove = (id: string | number) => {
+        fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/workflow-instances/approve/${id}`, {
             method: "POST",
-            headers: getAuthHeaders(session?.accessToken),
+            headers: getAuthHeaders((session as Session)?.accessToken),
             body: JSON.stringify({
                 HR:true
             }),
@@ -104,16 +107,13 @@ export default function HRPage() {
             })
             .catch((err) => {
                 console.error("Error fetching unassigned tasks:", err);
-            })
-            .finally(() => setIsLoading(false));
+            });
     };
 
-    const handleAssign = (id: number) => {
-
-        setIsLoading(true);
-        fetch(`http://localhost:8082/api/workflow-instances/assign/${id}`, {
+    const handleAssign = (id: string | number) => {
+        fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/workflow-instances/assign/${id}`, {
             method: "POST",
-            headers: getAuthHeaders(session?.accessToken),
+            headers: getAuthHeaders((session as Session)?.accessToken),
         })
             .then(async (res) => {
                 const contentType = res.headers.get("content-type");
@@ -135,8 +135,7 @@ export default function HRPage() {
             })  
             .catch((err) => {
                 console.error("Error fetching unassigned tasks:", err);
-            })
-            .finally(() => setIsLoading(false));
+            });
     };
 
     const onSignOut = async () => {
@@ -197,7 +196,7 @@ export default function HRPage() {
                     <tbody>
                         {dataToDisplay.map((item) => (
                             <tr key={item.id}>
-                                <td className="border-b p-2 text-gray-800 dark:text-gray-100">{item.id}</td>
+                                <td className="border-b p-2 text-gray-800 dark:text-gray-100">{item.processInstanceId}</td>
                                 <td className="border-b p-2 text-gray-800 dark:text-gray-100">{item.name}</td>
                                 {view === "unassigned" && <td className="border-b p-2 text-gray-800 dark:text-gray-100">{item.status}</td>}
                                 <td className="border-b p-2">

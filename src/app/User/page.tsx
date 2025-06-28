@@ -1,19 +1,25 @@
 "use client";
 import { useState, useEffect } from "react";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { getStoredToken, clearStoredToken, getAuthHeaders, handleSignOut } from "../utils/auth";
+import { getAuthHeaders, handleSignOut } from "../utils/auth";
+import { Session } from "next-auth";
+import { access } from "fs";
+
+interface TaskItem {
+    processInstanceId?: string | number;
+    name?: string;
+}
 
 export default function UserPage() {
     const { data: session } = useSession();
     const router = useRouter();
     const [firstname, setFirstname] = useState("");
     const [age, setAge] = useState("");
-    const [submitted, setSubmitted] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
-    const [tasks, setTasks] = useState<any[]>([]);
+    const [tasks, setTasks] = useState<TaskItem[]>([]);
     const [tasksLoading, setTasksLoading] = useState(false);
     const [tasksError, setTasksError] = useState("");
 
@@ -27,22 +33,21 @@ export default function UserPage() {
         e.preventDefault();
         setError("");
         setSuccess("");
-        setSubmitted(false);
         setLoading(true);
+        console.log("access", (session as Session)?.accessToken)
         try {
             const res = await fetch("/api/apply", {
                 method: "POST",
-                headers: getAuthHeaders(session?.accessToken),
+                headers: getAuthHeaders((session as Session)?.accessToken),
                 body: JSON.stringify({ firstName: firstname, age: Number(age) }),
             });
             const data = await res.json();
             if (res.ok) {
                 setSuccess("Form submitted successfully!");
-                setSubmitted(true);
             } else {
                 setError(data.error_description || data.error || "Submission failed.");
             }
-        } catch (err) {
+        } catch {
             setError("An error occurred. Please try again.");
         } finally {
             setLoading(false);
@@ -53,10 +58,12 @@ export default function UserPage() {
         setTasksError("");
         setTasks([]);
         setTasksLoading(true);
+        console.log("url",process.env.NEXT_PUBLIC_BACKEND_URL)
+        console.log("token", (session as Session)?.accessToken);
 
         try {
-            const res = await fetch("http://localhost:8082/api/user/tasks", {
-                headers: getAuthHeaders(session?.accessToken),
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/user/tasks`, {
+                headers: getAuthHeaders((session as Session)?.accessToken),
             });
             if (!res.ok) {
                 const data = await res.json();
@@ -64,8 +71,9 @@ export default function UserPage() {
             }
             const data = await res.json();
             setTasks(Array.isArray(data) ? data : (data.tasks || []));
-        } catch (err: any) {
-            setTasksError(err.message || "An error occurred while fetching tasks.");
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : "An error occurred while fetching tasks.";
+            setTasksError(errorMessage);
         } finally {
             setTasksLoading(false);
         }
@@ -79,7 +87,6 @@ export default function UserPage() {
             console.error("Logout failed:", error);
         }
     };
-
 
     if (!session) return null;
 
@@ -168,7 +175,7 @@ export default function UserPage() {
                 ) : (
                     !tasksLoading && (
                         <div className="mt-6 bg-white dark:bg-gray-800 p-6 rounded-xl shadow text-center text-gray-600 dark:text-gray-300">
-                            <p className="text-md">🧐 You haven't submitted any applications yet.</p>
+                            <p className="text-md">🧐 You haven&apos;t submitted any applications yet.</p>
                         </div>
                     )
                 )}

@@ -1,5 +1,6 @@
 // Utility functions for handling authentication tokens
-import { useSession, signOut, getSession } from "next-auth/react";
+import { signOut, getSession } from "next-auth/react";
+import { Session } from "next-auth";
 
 export const getStoredToken = (): string | null => {
   if (typeof window !== 'undefined') {
@@ -49,7 +50,7 @@ export const handleSignOut = async () => {
   
   const session = await getSession();
 
-  const idToken = session?.id_token;
+  const idToken = (session as Session)?.id_token;
 
   if (!idToken) {
     console.error("id_token not available.");
@@ -60,27 +61,6 @@ export const handleSignOut = async () => {
   await signOut({ redirect: false });
 
   // Then redirect to Keycloak logout with id_token_hint
-  window.location.href = `http://localhost:8081/realms/LeaveApplication/protocol/openid-connect/logout?id_token_hint=${idToken}&post_logout_redirect_uri=${encodeURIComponent("http://localhost:3000")}`;
+  window.location.href = `${process.env.NEXT_PUBLIC_KEYCLOAK_ISSUER}/protocol/openid-connect/logout?id_token_hint=${idToken}&post_logout_redirect_uri=${encodeURIComponent("http://localhost:3000")}`;
 
 };
-
-// Alternative signout function that directly handles Keycloak logout
-export const handleKeycloakSignOut = () => {
-  console.log("Starting Keycloak signout process...");
-  
-  // Clear all stored data
-  clearStoredToken();
-  if (typeof window !== 'undefined') {
-    sessionStorage.clear();
-    localStorage.removeItem("next-auth.session-token");
-    localStorage.removeItem("next-auth.csrf-token");
-    localStorage.removeItem("next-auth.callback-url");
-    console.log("Cleared all stored data");
-  }
-  
-  // Redirect to Keycloak logout endpoint
-  const keycloakLogoutUrl = `${process.env.NEXT_PUBLIC_KEYCLOAK_ISSUER}/protocol/openid-connect/logout?redirect_uri=${encodeURIComponent(window.location.origin)}`;
-  
-  console.log("Redirecting to Keycloak logout:", keycloakLogoutUrl);
-  window.location.href = keycloakLogoutUrl;
-}; 

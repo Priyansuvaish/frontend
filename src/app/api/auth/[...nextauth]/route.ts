@@ -1,12 +1,13 @@
-import NextAuth from "next-auth";
+import NextAuth from "next-auth/next";
 import KeycloakProvider from "next-auth/providers/keycloak";
+import { Session } from "next-auth";
 
 const handler = NextAuth({
   providers: [
     KeycloakProvider({
-      clientId: process.env.KEYCLOAK_CLIENT_ID!,
+      clientId: process.env.KEYCLOAK_CLIENT_ID!||"leave_application",
       clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
-      issuer: process.env.KEYCLOAK_ISSUER!,
+      issuer: process.env.KEYCLOAK_ISSUER!||"http://localhost:8081/realms/LeaveApplication",
     }),
   ],
   callbacks: {
@@ -20,8 +21,8 @@ const handler = NextAuth({
     },
     async session({ session, token }) {
       // Send access_token to the client
-      session.accessToken = token.accessToken as string;
-      session.id_token = token.id_token as string;
+      (session as Session & { accessToken?: string; id_token?: string }).accessToken = token.accessToken as string;
+      (session as Session & { accessToken?: string; id_token?: string }).id_token = token.id_token as string;
       return session;
     },
   },
