@@ -53,7 +53,7 @@ export default function UserPage() {
         setTasksError("");
         setTasks([]);
         setTasksLoading(true);
-        
+
         try {
             const res = await fetch("http://localhost:8082/api/user/tasks", {
                 headers: getAuthHeaders(session?.accessToken),
@@ -71,9 +71,15 @@ export default function UserPage() {
         }
     };
 
-    const onSignOut = () => {
-        handleSignOut(signOut);
+    const onSignOut = async () => {
+        try {
+            // Sign out from NextAuth (local session)
+            handleSignOut();
+        } catch (error) {
+            console.error("Logout failed:", error);
+        }
     };
+
 
     if (!session) return null;
 
@@ -82,7 +88,7 @@ export default function UserPage() {
             <div className="w-full max-w-md backdrop-blur-lg bg-white/90 dark:bg-gray-800/80 p-8 rounded-2xl shadow-2xl transition-all">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white">🚀 User Form</h1>
-                    <button 
+                    <button
                         onClick={onSignOut}
                         className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
                     >

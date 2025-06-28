@@ -1,4 +1,5 @@
 // Utility functions for handling authentication tokens
+import { useSession, signOut, getSession } from "next-auth/react";
 
 export const getStoredToken = (): string | null => {
   if (typeof window !== 'undefined') {
@@ -28,7 +29,7 @@ export const getAuthHeaders = (token?: string): HeadersInit => {
   };
 };
 
-export const handleSignOut = (signOut: any) => {
+export const handleSignOut = async () => {
   console.log("Starting signout process...");
   
   // Clear any stored tokens first
@@ -46,17 +47,21 @@ export const handleSignOut = (signOut: any) => {
   
   console.log("Calling NextAuth signOut...");
   
-  // Call NextAuth signOut with a simple callback URL
-  signOut({ 
-    callbackUrl: "/",
-    redirect: true 
-  }).catch((error: any) => {
-    console.error("Error during signout:", error);
-    // Fallback: force redirect to home page
-    if (typeof window !== 'undefined') {
-      window.location.href = "/";
-    }
-  });
+  const session = await getSession();
+
+  const idToken = session?.id_token;
+
+  if (!idToken) {
+    console.error("id_token not available.");
+    return;
+  }
+
+  // First sign out from NextAuth
+  await signOut({ redirect: false });
+
+  // Then redirect to Keycloak logout with id_token_hint
+  window.location.href = `http://localhost:8081/realms/LeaveApplication/protocol/openid-connect/logout?id_token_hint=${idToken}&post_logout_redirect_uri=${encodeURIComponent("http://localhost:3000")}`;
+
 };
 
 // Alternative signout function that directly handles Keycloak logout

@@ -14,12 +14,14 @@ const handler = NextAuth({
       // Persist the access_token to the token right after signin
       if (account) {
         token.accessToken = account.access_token;
+        token.id_token = account.id_token;
       }
       return token;
     },
     async session({ session, token }) {
       // Send access_token to the client
       session.accessToken = token.accessToken as string;
+      session.id_token = token.id_token as string;
       return session;
     },
   },

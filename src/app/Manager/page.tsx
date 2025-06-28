@@ -36,8 +36,8 @@ export default function ManagerPage() {
                 .then((data) => {
                     // Format the response as needed. Here assuming data is an array.
                     const formatted = data.map((item: any) => ({
-                        id: item.id || item.taskId || "N/A",
-                        name: item.name || item.taskName || "Unnamed Task",
+                        id: item.processInstanceId || "N/A",
+                        name: item.name || "Unnamed Task",
                         status: "Unassigned",
                     }));
                     setUnassignedData(formatted);
@@ -60,8 +60,8 @@ export default function ManagerPage() {
                 .then((data) => {
                     // Format the response as needed. Here assuming data is an array.
                     const formatted = data.map((item: any) => ({
-                        id: item.id || item.taskId || "N/A",
-                        name: item.name || item.taskName || "Unnamed Task",
+                        id: item.processInstanceId || "N/A",
+                        name: item.name || "Unnamed Task",
                     }));
                     setassignedData(formatted);
                 })
@@ -75,8 +75,6 @@ export default function ManagerPage() {
     const dataToDisplay = view === "assigned" ? assignedData : unassignedData;
 
     const handleApprove = (id: number) => {
-        console.log(`Approved task with ID: ${id}`);
-        // Implement your API call or state update logic here
 
         setIsLoading(true);
         fetch(`http://localhost:8082/api/workflow-instances/approve/${id}`, {
@@ -111,8 +109,6 @@ export default function ManagerPage() {
     };
 
     const handleAssign = (id: number) => {
-        console.log(`Assigned task with ID: ${id}`);
-        // Implement your API call or state update logic here
 
         setIsLoading(true);
         fetch(`http://localhost:8082/api/workflow-instances/assign/${id}`, {
@@ -143,8 +139,13 @@ export default function ManagerPage() {
             .finally(() => setIsLoading(false));
     };
 
-    const onSignOut = () => {
-        handleSignOut(signOut);
+    const onSignOut = async () => {
+        try {
+            // Sign out from NextAuth (local session)
+            handleSignOut();
+        } catch (error) {
+            console.error("Logout failed:", error);
+        }
     };
 
     if (!session) return null;

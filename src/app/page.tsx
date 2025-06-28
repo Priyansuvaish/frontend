@@ -9,7 +9,6 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    console.log("Session on home page:", session);
     if (session?.accessToken) {
       const decoded: any = jwtDecode(session.accessToken);
       const roles: string[] = decoded?.realm_access?.roles || [];

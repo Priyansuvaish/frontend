@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   const body = await req.json();
-  console.log(body);
-  console.log(authHeader);
 
   try {
     const response = await fetch('http://localhost:8082/api/form-submissions?templateId=2', {
