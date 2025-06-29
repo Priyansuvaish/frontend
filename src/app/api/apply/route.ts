@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
 
   try {
-    const response = await fetch(`${process.env.BACKEND_URL}/api/form-submissions?templateId=2`, {
+    const response = await fetch(`${process.env.BACKEND_URL}/api/form-submissions?templateId=${process.env.TEMPLATE_ID}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -13,7 +13,14 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify(body),
     });
-
+    if (!response.ok) {
+      if (response.status === 401) {
+        return NextResponse.json(
+          { error: 'Unauthorized. Please log in again.' },
+          { status: 401 }
+        );
+      }
+    }
     // 🛡️ Check if response has content
     const contentType = response.headers.get('content-type');
     let data = null;

@@ -46,7 +46,7 @@ export default function HeadPage() {
       if (err instanceof Error && err.message === 'UNAUTHORIZED') {
         console.log('Unauthorized error detected, redirecting to login...');
         clearStoredToken();
-        signOut({ redirect: false });
+        handleSignOut();
         router.push('/');
         return;
       }
@@ -60,7 +60,7 @@ export default function HeadPage() {
   useEffect(() => {
     if (status === 'loading') return;
     if (status === 'unauthenticated') {
-      router.push('/');
+      handleSignOut();
       return;
     }
     if (status === 'authenticated' && session) {

@@ -3,6 +3,9 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { getAuthHeaders, handleSignOut } from "../utils/auth";
+import { FormTemplateService } from '@/services/formTemplateService';
+import { FormTemplate } from '@/types/form-template';
+
 import { Session } from "next-auth";
 import { access } from "fs";
 
@@ -11,23 +14,63 @@ interface TaskItem {
     name?: string;
 }
 
+interface NestedSchema {
+    properties: Record<string, any>;
+    required?: string[];
+}
+
 export default function UserPage() {
     const { data: session } = useSession();
     const router = useRouter();
-    const [firstname, setFirstname] = useState("");
-    const [age, setAge] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [tasks, setTasks] = useState<TaskItem[]>([]);
     const [tasksLoading, setTasksLoading] = useState(false);
     const [tasksError, setTasksError] = useState("");
+    const [templates, setTemplates] = useState<FormTemplate | null>(null);
+    const [formData, setFormData] = useState<{ [key: string]: any }>({});
 
     useEffect(() => {
         if (!session) {
             router.replace("/");
         }
     }, [session, router]);
+
+    useEffect(() => {
+        const fetchTemplate = async () => {
+            try {
+                setLoading(true);
+                setError("");
+
+                if (!(session as Session)?.accessToken) {
+                    console.log('No access token in session, redirecting to login');
+                    handleSignOut();
+                    return;
+                }
+
+                const accessToken = (session as Session).accessToken;
+                const data = await FormTemplateService.getById(Number(process.env.NEXT_PUBLIC_TEMPLATE_ID), accessToken!);
+                setTemplates(data);
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'An error occurred');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchTemplate();
+    }, []);
+    useEffect(() => {
+        const nested: NestedSchema | undefined = templates?.schemaJson?.properties as NestedSchema | undefined;
+        if (nested) {
+            const initialData: { [key: string]: any } = {};
+            Object.keys(nested).forEach((key) => {
+                initialData[key] = "";
+            });
+            setFormData(initialData);
+        }
+    }, [templates]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -39,13 +82,18 @@ export default function UserPage() {
             const res = await fetch("/api/apply", {
                 method: "POST",
                 headers: getAuthHeaders((session as Session)?.accessToken),
-                body: JSON.stringify({ firstName: firstname, age: Number(age) }),
+                body: JSON.stringify(formData),
             });
             const data = await res.json();
             if (res.ok) {
                 setSuccess("Form submitted successfully!");
             } else {
                 setError(data.error_description || data.error || "Submission failed.");
+            }
+            if (!res.ok) {
+                if (res.status === 401) {
+                    handleSignOut();
+                }
             }
         } catch {
             setError("An error occurred. Please try again.");
@@ -58,7 +106,7 @@ export default function UserPage() {
         setTasksError("");
         setTasks([]);
         setTasksLoading(true);
-        console.log("url",process.env.NEXT_PUBLIC_BACKEND_URL)
+        console.log("url", process.env.NEXT_PUBLIC_BACKEND_URL)
         console.log("token", (session as Session)?.accessToken);
 
         try {
@@ -66,6 +114,9 @@ export default function UserPage() {
                 headers: getAuthHeaders((session as Session)?.accessToken),
             });
             if (!res.ok) {
+                if (res.status === 401) {
+                    handleSignOut();
+                }
                 const data = await res.json();
                 throw new Error(data.error_description || data.error || "Failed to fetch tasks.");
             }
@@ -106,31 +157,107 @@ export default function UserPage() {
                     {error && <div className="text-red-500 text-sm text-center animate-pulse">{error}</div>}
                     {success && <div className="text-green-600 text-sm text-center animate-pulse">{success}</div>}
 
-                    <div>
-                        <label htmlFor="firstname" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
-                        <input
-                            id="firstname"
-                            type="text"
-                            value={firstname}
-                            onChange={e => setFirstname(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                            required
-                            disabled={loading}
-                        />
-                    </div>
+                    {(() => {
+                        const nested: NestedSchema | undefined = templates?.schemaJson?.properties as NestedSchema | undefined;
+                        if (!nested) return null;
+                        return (
+                            <>
+                                {Object.entries(nested).map(([field, config]: [string, any]) => {
+                                    const isRequired = Array.isArray(nested.required) && nested.required.includes(field);
 
-                    <div>
-                        <label htmlFor="age" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Age</label>
-                        <input
-                            id="age"
-                            type="number"
-                            value={age}
-                            onChange={e => setAge(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                            required
-                            disabled={loading}
-                        />
-                    </div>
+                                    // Select/enum
+                                    if (config.enum) {
+                                        return (
+                                            <div key={field}>
+                                                <label htmlFor={field} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{config.label || field}</label>
+                                                <select
+                                                    id={field}
+                                                    value={formData[field] || ""}
+                                                    onChange={e => setFormData(prev => ({ ...prev, [field]: e.target.value }))}
+                                                    required={isRequired}
+                                                    disabled={loading}
+                                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                                >
+                                                    <option value="">Select...</option>
+                                                    {config.enum.map((option: string) => (
+                                                        <option key={option} value={option}>{option}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        );
+                                    }
+
+                                    // Textarea
+                                    if (config.widget === "textarea") {
+                                        return (
+                                            <div key={field}>
+                                                <label htmlFor={field} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{config.label || field}</label>
+                                                <textarea
+                                                    id={field}
+                                                    value={formData[field] || ""}
+                                                    onChange={e => setFormData(prev => ({ ...prev, [field]: e.target.value }))}
+                                                    required={isRequired}
+                                                    disabled={loading}
+                                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                                />
+                                            </div>
+                                        );
+                                    }
+
+                                    // Checkbox
+                                    if (config.type === "boolean") {
+                                        return (
+                                            <div key={field} className="flex items-center gap-2">
+                                                <input
+                                                    id={field}
+                                                    type="checkbox"
+                                                    checked={!!formData[field]}
+                                                    onChange={e => setFormData(prev => ({ ...prev, [field]: e.target.checked }))}
+                                                    disabled={loading}
+                                                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                />
+                                                <label htmlFor={field} className="text-sm font-medium text-gray-700 dark:text-gray-300">{config.label || field}</label>
+                                            </div>
+                                        );
+                                    }
+
+                                    // Number
+                                    if (config.type === "integer" || config.type === "number") {
+                                        return (
+                                            <div key={field}>
+                                                <label htmlFor={field} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{config.label || field}</label>
+                                                <input
+                                                    id={field}
+                                                    type="number"
+                                                    value={formData[field] || ""}
+                                                    onChange={e => setFormData(prev => ({ ...prev, [field]: Number(e.target.value) }))}
+                                                    required={isRequired}
+                                                    disabled={loading}
+                                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                                />
+                                            </div>
+                                        );
+                                    }
+
+                                    // Default: text
+                                    return (
+                                        <div key={field}>
+                                            <label htmlFor={field} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{config.label || field}</label>
+                                            <input
+                                                id={field}
+                                                type="text"
+                                                value={formData[field] || ""}
+                                                onChange={e => setFormData(prev => ({ ...prev, [field]: e.target.value }))}
+                                                required={isRequired}
+                                                disabled={loading}
+                                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </>
+                        );
+                    })()}
 
                     <button
                         type="submit"

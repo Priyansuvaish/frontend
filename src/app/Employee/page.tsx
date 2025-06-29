@@ -32,7 +32,12 @@ export default function EmployeePage() {
                 headers: getAuthHeaders((session as Session)?.accessToken),
             })
                 .then((res) => {
-                    if (!res.ok) throw new Error("Failed to fetch");
+                    if (!res.ok) {
+                        if (res.status === 401) {
+                            handleSignOut();
+                        }
+                        throw new Error("Failed to fetch");
+                    }
                     return res.json();
                 })
                 .then((data) => {
@@ -55,7 +60,12 @@ export default function EmployeePage() {
                 headers: getAuthHeaders((session as Session)?.accessToken),
             })
                 .then((res) => {
-                    if (!res.ok) throw new Error("Failed to fetch");
+                    if (!res.ok) {
+                        if (res.status === 401) {
+                            handleSignOut();
+                        }
+                        throw new Error("Failed to fetch");
+                    }
                     return res.json();
                 })
                 .then((data) => {
@@ -91,6 +101,9 @@ export default function EmployeePage() {
                 const contentType = res.headers.get("content-type");
                 let data;
                 if (!res.ok) {
+                    if (res.status === 401) {
+                        handleSignOut();
+                    }
                     const error = contentType?.includes("application/json")
                         ? await res.json()
                         : await res.text();
@@ -119,6 +132,9 @@ export default function EmployeePage() {
                 const contentType = res.headers.get("content-type");
                 let data;
                 if (!res.ok) {
+                    if (res.status === 401) {
+                        handleSignOut();
+                    }
                     const error = contentType?.includes("application/json")
                         ? await res.json()
                         : await res.text();

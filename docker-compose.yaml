@@ -1,0 +1,23 @@
+version: "3.8"
+services:
+  backend:
+    image: priyanshugupta753/backend:latest
+    ports:
+      - '8082:8082'
+    
+  frontend:
+    image: priyanshugupta753/frontend:latest
+    ports:
+      - '3000:3000'
+    environment:
+      NEXTAUTH_SECRET: your_secret
+      NEXTAUTH_URL: http://localhost:3000
+      KEYCLOAK_ISSUER: http://192.168.0.100:8081/realms/LeaveApplication
+      KEYCLOAK_CLIENT_ID: leave_application
+      BACKEND_URL: http://192.168.0.100:8082
+      NEXT_PUBLIC_BACKEND_URL: http://192.168.0.100:8082
+      NEXT_PUBLIC_KEYCLOAK_ISSUER: http://192.168.0.100:8081/realms/LeaveApplication
+      TEMPLATE_ID: 4
+      NEXT_PUBLIC_TEMPLATE_ID: 4
+    depends_on:
+      - backend

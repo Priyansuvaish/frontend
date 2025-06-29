@@ -1,5 +1,5 @@
 import { FormTemplate } from '@/types/form-template';
-import { getAuthHeaders } from "../app/utils/auth";
+import { getAuthHeaders,handleSignOut } from "../app/utils/auth";
 
 export class FormTemplateService {
     static async getAll(accessToken: string): Promise<FormTemplate[]> {
@@ -24,6 +24,7 @@ export class FormTemplateService {
         if (response.status === 401) {
           const errorText = await response.text();
           console.log('GET 401 error response:', errorText);
+          handleSignOut();
           throw new Error('UNAUTHORIZED');
         }
         if (response.status === 403) {
@@ -48,6 +49,7 @@ export class FormTemplateService {
   
       if (!response.ok) {
         if (response.status === 401) {
+          handleSignOut();
           throw new Error('UNAUTHORIZED');
         }
         if (response.status === 404) throw new Error('Template not found');
@@ -66,6 +68,7 @@ export class FormTemplateService {
   
       if (!response.ok) {
         if (response.status === 401) {
+          handleSignOut();
           throw new Error('UNAUTHORIZED');
         }
         throw new Error(`Failed to create template: ${response.statusText}`);
@@ -93,6 +96,7 @@ export class FormTemplateService {
 
       if (!response.ok) {
         if (response.status === 401) {
+          handleSignOut();
           throw new Error('UNAUTHORIZED');
         }
         if (response.status === 404) throw new Error('Template not found');
@@ -112,6 +116,7 @@ export class FormTemplateService {
   
       if (!response.ok) {
         if (response.status === 401) {
+          handleSignOut();
           throw new Error('UNAUTHORIZED');
         }
         if (response.status === 404) throw new Error('Template not found');
