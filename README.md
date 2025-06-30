@@ -1,178 +1,280 @@
-# Form Template Management System
+# Configurable Form and Workflow Engine
 
-A modern web application for managing form templates with a React frontend and Spring Boot backend integration.
+## 📌 Overview
 
-## Features
+This project is a modular and extensible system that allows:
 
-- **Form Template Management**: Create, read, update, and delete form templates
-- **JSON Schema Support**: Define form structures using JSON Schema format
-- **Modern UI**: Clean, responsive interface built with Next.js and Tailwind CSS
-- **Role-based Access**: Head role required for template management operations
-- **Real-time Validation**: JSON schema validation with helpful error messages
+- 🛠️ **Admins** to configure dynamic form templates via JSON Schema.
+- 🔄 **Admins** to configure state-machine-based workflows.
+- 📝 **Users** to submit forms that trigger associated workflows.
+- 🔐 **Role-based users** to progress the workflow through different states.
+- 🧩 **Authentication and Role Management** handled securely via Keycloak.
 
-## Tech Stack
+---
 
-### Frontend
-- **Next.js 15** - React framework with App Router
-- **TypeScript** - Type-safe development
-- **Tailwind CSS** - Utility-first CSS framework
-- **Heroicons** - Beautiful SVG icons
-- **NextAuth.js** - Authentication system
+## 🧱 Tech Stack
 
-### Backend Integration
-- **Spring Boot** - Java backend framework
-- **JPA/Hibernate** - Database ORM
-- **Spring Security** - Role-based authorization
-- **RESTful API** - HTTP endpoints for CRUD operations
+| Layer        | Technology     |
+|--------------|----------------|
+| Frontend     | Next.js        |
+| Backend      | Spring Boot    |
+| Auth         | Keycloak       |
+| Database     | PostgreSQL     |
+| Workflow     | Flowable BPMN  |
 
-## Project Structure
+---
+
+## 🧩 Features
+
+### 🔧 Admin Features
+- Configure dynamic **form templates** using JSON Schema.
+- Define **workflows** with:
+    - States (e.g., `Draft`, `Review`, `Approved`, `Closed`)
+    - Transitions with allowed roles (e.g., `Employee`, `Manager`, `HR`)
+
+### 🧑‍💼 User Features
+- Authenticate via **Keycloak**.
+- Fill and submit forms.
+- Trigger associated workflows automatically.
+- Transition workflow states if permitted by role.
+
+---
+
+## ⚙️ Architecture
+
+1. **Frontend (Next.js)**
+    - Fetches form templates and renders dynamic form UIs.
+    - Calls backend APIs for submission and workflow transitions.
+    - Integrates with Keycloak for login and role handling.
+
+2. **Backend (Spring Boot + Flowable)**
+    - Stores form templates and workflows in PostgreSQL.
+    - On form submission:
+        - Persists form data.
+        - Starts a Flowable process for the associated workflow.
+    - Enforces role-based transitions using Keycloak JWT validation.
+
+3. **Workflow Engine (Flowable)**
+    - Manages process instances.
+    - Maps transitions based on role permissions.
+
+4. **Authentication (Keycloak)**
+    - Handles user login and role management.
+    - Issues JWTs for secure API access.
+
+---
+
+## 📂 Folder Structure (Simplified)
 
 ```
 frontend/
 ├── src/
 │   ├── app/
+│   │   ├── api/
+|   │   │   ├── apply/                # API for Submission
+|   │   │   ├── auth/                 # API for authentication
+|   │   │   └── form-templates/        # API for Submission
 │   │   ├── Head/
 │   │   │   └── page.tsx          # Main Head dashboard
-│   │   └── api/
-│   │       └── form-templates/   # API proxy routes
+│   │   ├── Employee/
+│   │   │   └── page.tsx          # Main Employee dashboard
+|   │   │   ├── HR/
+│   │   │   └── page.tsx          # Main HR dashboard
+│   │   ├── Manager/
+│   │   │   └── page.tsx          # Main Manager dashboard
+│   │   ├── User/
+│   │   │   └── page.tsx          # Main User dashboard
+│   │   └── util/
+│   │       └── auth.ts/   # Signout function
 │   ├── components/
 │   │   ├── FormTemplateCard.tsx  # Template display component
 │   │   └── FormTemplateModal.tsx # Create/edit modal
 │   ├── services/
 │   │   └── formTemplateService.ts # API service layer
 │   └── types/
+|   |   ├── next-auth.d.tsx  # TypeScript interfaces
 │       └── form-template.ts      # TypeScript interfaces
 ```
 
-## Setup Instructions
-
-### Prerequisites
-- Node.js 18+ 
-- npm or yarn
-- Java 17+ (for backend)
-- Spring Boot backend running on `http://localhost:8080`
-
-### Frontend Setup
-
-1. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-2. **Set environment variables**:
-   Create a `.env.local` file:
-   ```env
-   BACKEND_URL=http://localhost:8080
-   ```
-
-3. **Run the development server**:
-   ```bash
-   npm run dev
-   ```
-
-4. **Access the application**:
-   Open [http://localhost:3000/Head](http://localhost:3000/Head)
-
-### Backend Requirements
-
-The frontend expects a Spring Boot backend with the following endpoints:
-
-- `GET /api/form-templates` - List all templates
-- `GET /api/form-templates/{id}` - Get template by ID
-- `POST /api/form-templates` - Create new template (Head role required)
-- `PUT /api/form-templates/{id}` - Update template (Head role required)
-- `DELETE /api/form-templates/{id}` - Delete template (Head role required)
-
-## Usage
-
-### Creating a Form Template
-
-1. Navigate to the Head dashboard
-2. Click "Create Template"
-3. Enter a title for your template
-4. Define the JSON schema for your form structure
-5. Click "Create" to save
-
-### Example JSON Schema
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "name": {
-      "type": "string",
-      "title": "Full Name",
-      "minLength": 2
-    },
-    "email": {
-      "type": "string",
-      "title": "Email Address",
-      "format": "email"
-    },
-    "department": {
-      "type": "string",
-      "title": "Department",
-      "enum": ["Engineering", "Marketing", "Sales", "HR"]
-    },
-    "experience": {
-      "type": "number",
-      "title": "Years of Experience",
-      "minimum": 0,
-      "maximum": 50
-    }
-  },
-  "required": ["name", "email", "department"]
-}
+```
+backend/
+├── src/main/java/com.example.workflow/
+│   ├── config/
+|   │   └── Securityconfig        # Authorozation configuration 
+│   ├── controller/
+│   │   ├── FormSubmissionController               # API for Submission
+│   │   ├── FormTemplateController                 # API for from template
+│   │   ├── TaskController                         # API to get user task
+│   │   └── WorkflowInstanceController             # API for workflow transition
+│   ├── DTO/
+│   │   └── TaskDto           # Get the response from the workflow
+│   ├── Model/
+│   │   ├── FormSubmission               
+│   │   ├── FormTemplate                 
+│   │   └── JsonToMapConverter           
+│   ├── repositary/
+|   │   ├── FormSubmissionRepositary               # API for Submission
+│   │   └── FormTemplateRepositary                 # API for from template
+|   └── service/
+│   │   ├── FormSubmissionService              
+│   │   └── FormTemplateService               
+│   └── util/
+│   |   └── validator      # Validate the form submitted
 ```
 
-### Managing Templates
 
-- **View**: All templates are displayed in a responsive grid
-- **Edit**: Click the "Edit" button to modify existing templates
-- **Delete**: Click the "Delete" button to remove templates (with confirmation)
+---
 
-## API Integration
+# 🚀 Getting Started
 
-The frontend communicates with the backend through Next.js API routes that act as proxies:
+### Prerequisites
+- Node.js, Maven, Docker
+- PostgreSQL database
+- Keycloak server
 
-- `/api/form-templates` - Handles GET and POST requests
-- `/api/form-templates/[id]` - Handles GET, PUT, and DELETE for specific templates
+## 🌐 Frontend
 
-## Security
+### 1. Clone the Repository
 
-- All template management operations require the "Head" role
-- JSON schema validation prevents invalid data submission
-- CSRF protection through Next.js built-in security features
+```bash
+git clone https://github.com/Priyansuvaish/frontend.git
+cd frontend
+```
 
-## Development
+### 2. Configure `.env`
 
-### Adding New Features
+```
+KEYCLOAK_CLIENT_ID=<Your-Realm-Name>
+KEYCLOAK_ISSUER=<Your-keyclock-url>/realms/<Your-Realm-Name>              #serverside variable
+NEXT_PUBLIC_KEYCLOAK_ISSUER=<Your-keyclock-url>/realms/<Your-Realm-Name>  #clientside variable
+NEXTAUTH_URL=<Your-Application-server>
+BACKEND_URL=<Your-Springboot-server>                #serverside variable
+NEXT_PUBLIC_BACKEND_URL=<Your-Springboot-server>    #clientside variable
+NEXT_PUBLIC_TEMPLATE_ID=<Your-form-ID>              #serverside variable
+TEMPLATE_ID=<Your-form-ID>                          #clientside variable
+```
 
-1. **New Components**: Create reusable components in `src/components/`
-2. **API Services**: Add service methods in `src/services/`
-3. **Types**: Define TypeScript interfaces in `src/types/`
-4. **API Routes**: Create proxy routes in `src/app/api/`
+### 3. Install & Run
 
-### Styling
+```bash
+npm install
+npm run build
+npm run dev
+```
 
-The application uses Tailwind CSS for styling. Custom styles can be added to `src/app/globals.css`.
+## 🔧 Backend
 
-## Troubleshooting
+### 1. Clone the Repository
 
-### Common Issues
+```bash
+git clone https://github.com/Priyansuvaish/backendworkflow.git
+cd backendworkflow
+```
 
-1. **Backend Connection Error**: Ensure the Spring Boot backend is running on the correct port
-2. **CORS Issues**: The backend should allow requests from `http://localhost:3000`
-3. **Authentication Errors**: Verify that the user has the "Head" role
+### 2. Set Up Keyclock
+- Download [keyclock](https://www.keycloak.org/)
+- Configure realm, roles, and clients.
+- Start Keycloak server.
 
-### Debug Mode
+### 3. Set Up Postgresql
+- Download [PostgreSQL](https://www.postgresql.org/download/)
+- Set the Enviroment variable
+- Run the Postgresql
+- Create a database.
 
-Enable debug logging by setting `NODE_ENV=development` in your environment variables.
+### 4. Configure  `aplication.yml`
 
-## Contributing
+```
+server:
+  port: <Your-Port-Number>
+spring:
+  datasource:
+    url: <Your-Postgresql-URL>/DatabaseName
+    username: <Your-username>
+    password: <Your-password>
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: <Your-keyclock-url>/realms/<Your-Realm-Name>
+keycloak:
+  realm: <Your-Realm-Name>
+  auth-server-url: <Your-keyclock-url>
+  resource: <Your-Resource-Name>
+  public-client: true
+  bearer-only: true 
+```
 
-1. Follow the existing code structure and patterns
-2. Use TypeScript for type safety
-3. Add proper error handling
-4. Test all CRUD operations
-5. Ensure responsive design works on all screen sizes
+### 5. Build and Run
+```bash
+./mvnw clean install
+java -jar target/backend.jar
+
+```
+# 🐳 Docker Deployment
+
+### 1. Setup the docker
+- Download the Docker
+- Run the docker
+
+### 2. Build Imagese
+- Goto the frontend directory and run the following commmand:
+```bash
+docker build -t <name-of-frontend-image> .
+```
+
+- Goto the backendworkflow directory and run the following commmand:
+```bash
+docker build -t <name-of-frontend-image> .
+```
+
+### Run Containers
+- To the frontend image, run this command:
+```bash
+docker run -p 3000:3000 -e NEXTAUTH_SECRET=your_secret -e NEXTAUTH_URL=<Your-Application-server> -e KEYCLOAK_ISSUER=<Your-keyclock-url>/realms/<Your-Realm-Name> -e NEXT_PUBLIC_KEYCLOAK_ISSUER=<Your-keyclock-url>/realms/<Your-Realm-Name> -e KEYCLOAK_CLIENT_ID=<Your-Realm-Name> -e BACKEND_URL=<Your-Springboot-server> -e NEXT_PUBLIC_BACKEND_URL=<Your-Spring boot-server> -e TEMPLATE_ID=<Your-form-ID> -e NEXT_PUBLIC_TEMPLATE_ID=<Your-form-ID> <name-of-frontend-image>
+```
+
+- To the backendworkflow image, run this command:
+```bash
+docker run -p <Your-Port-Number>:<Your-Port-Number> <name-of-frontend-image>
+```
+### 3. Or Use Docker Compose
+- Goto the frontend directory and set the enviroment variable in the `docker-compose.yml`
+
+🔁 Note: Replace localhost with your machine’s IP address in all URLs to allow access from within containers.
+```
+# Frontend Environment Variables
+NEXTAUTH_SECRET: your_secret
+KEYCLOAK_CLIENT_ID=<Your-Realm-Name>
+KEYCLOAK_ISSUER=<Your-keyclock-url>/realms/<Your-Realm-Name>              #serverside variable
+NEXT_PUBLIC_KEYCLOAK_ISSUER=<Your-keyclock-url>/realms/<Your-Realm-Name>  #clientside variable
+NEXTAUTH_URL=<Your-Application-server>
+BACKEND_URL=<Your-Springboot-server>                #serverside variable
+NEXT_PUBLIC_BACKEND_URL=<Your-Springboot-server>    #clientside variable
+NEXT_PUBLIC_TEMPLATE_ID=<Your-form-ID>              #serverside variable
+TEMPLATE_ID=<Your-form-ID>                          #clientside variable
+
+# Backend Environment Variables
+SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/birth
+      SPRING_DATASOURCE_USERNAME: <Your-username>
+      SPRING_DATASOURCE_PASSWORD: <Your-paasword>
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: <Your-keyclock-url>/realms/<Your-Realm-Name>
+      KEYCLOAK_REALM: <Your-Realm-Name>
+      KEYCLOAK_AUTH_SERVER_URL: <Your-keyclock-url>
+      KEYCLOAK_RESOURCE: <Your-Resource-Name>
+      KEYCLOAK_PUBLIC_CLIENT: "true"
+      KEYCLOAK_BEARER_ONLY: "true"
+```
+- Run the docker-compose file as:
+```bash
+docker-compose up
+```
