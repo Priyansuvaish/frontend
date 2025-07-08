@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
 
   try {
-    const response = await fetch(`${process.env.BACKEND_URL}/api/form-submissions?templateId=${process.env.TEMPLATE_ID}`, {
+    const response = await fetch(`${process.env.BACKEND_URL}/api/form-submissions?processid=myprocess&templateId=${process.env.TEMPLATE_ID}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
